@@ -1,5 +1,5 @@
 from google.adk.agents import LlmAgent    
-from tools.adk.tools import say_goodbye
+from tools.func_tools.tools import say_goodbye
 
 
 farewell_agent = LlmAgent(

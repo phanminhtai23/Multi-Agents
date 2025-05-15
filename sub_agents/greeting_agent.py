@@ -1,4 +1,4 @@
-from tools.adk.tools import say_hello
+from tools.func_tools.tools import say_hello
 from google.adk.agents import LlmAgent
 
 greeting_agent = LlmAgent(

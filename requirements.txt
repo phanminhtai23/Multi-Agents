@@ -1,2 +1,4 @@
 any-agent[openai]>=0.13.2
-openinference>=0.1.0 
+openinference>=0.1.0
+playwright>=1.42.0
+python-dotenv>=1.0.0 
