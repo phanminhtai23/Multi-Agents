@@ -1,42 +1,41 @@
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, Any
+from contextlib import AsyncExitStack
+from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset, SseServerParams
 
-async def navigate_to_url(url: str, headless: bool = False) -> Tuple[Optional[Browser], Optional[BrowserContext], Optional[Page], Optional[str]]:
+
+async def navigate_to_url(url: str, headless: bool = False, keep_open: bool = True) -> Dict[str, Any]:
     """
     Opens a browser and navigates to the specified URL using Playwright.
     
     Args:
         url (str): The URL to navigate to
         headless (bool): Whether to run the browser in headless mode. Defaults to False.
+        keep_open (bool): Whether to keep the browser open after navigation. Defaults to True.
     
     Returns:
-        Tuple containing:
-        - Browser instance
-        - Browser context
-        - Page instance
-        - Error message (if any)
+        Dictionary containing:
+        - success: Boolean indicating if navigation was successful
+        - message: Status message or error message
+        - url: The URL that was navigated to
     """
-    try:
-        playwright = await async_playwright().start()
-        # Launch the browser (using Chromium by default)
-        browser = await playwright.chromium.launch(headless=headless)
-        
-        # Create a new browser context
-        context = await browser.new_context()
-        
-        # Create a new page
-        page = await context.new_page()
-        
-        # Navigate to the URL
-        await page.goto(url)
-        
-        # Wait for the page to load
-        await page.wait_for_load_state("networkidle")
-        
-        return browser, context, page, None
-            
-    except Exception as e:
-        return None, None, None, f"Error navigating to URL: {str(e)}"
+    common_exit_stack = AsyncExitStack()
+
+    tools, _ = await MCPToolset.from_server(
+        connection_params=SseServerParams(
+            url="http://localhost:5000/sse",
+        ),
+        async_exit_stack=common_exit_stack
+    )
+
+    return await tools[1].run_async(
+        args={
+            "url": url,
+            "headless": headless,
+            "keep_open": keep_open,
+        },
+        tool_context=None,
+    )
 
 async def close_browser(browser: Optional[Browser]) -> None:
     """Close the browser instance if it exists."""
@@ -46,22 +45,12 @@ async def close_browser(browser: Optional[Browser]) -> None:
 async def main():
     # Example usage
     test_url = "https://www.facebook.com"
-    browser, context, page, error = await navigate_to_url(test_url)
+    result = await navigate_to_url(test_url, keep_open=True)
     
-    if error:
-        print(error)
-    else:
-        print("Successfully navigated to the URL")
-        print("Browser is still open. You can continue working with it.")
-        print("To close the browser, call await close_browser(browser) when you're done.")
-        
-        # Example of how to use the browser instance
-        try:
-            # Keep the script running until user decides to close
-            input("Press Enter to close the browser...")
-        finally:
-            # Clean up when done
-            await close_browser(browser)
+    print(f"Navigation result: {result['message']}")
+    if result['success']:
+        print(f"Successfully opened {result['url']}")
+        input("Press Enter to exit...")
 
 if __name__ == "__main__":
     import asyncio
